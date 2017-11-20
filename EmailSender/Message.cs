@@ -6,27 +6,24 @@ namespace Sender
 {
     internal class Message
     {
-        private MailMessage mail { get; set; }
-        private SmtpClient client { get; set; }
+        private MailMessage mail = new MailMessage();
+        private SmtpClient client = new SmtpClient();
         private const string sender = "contacto.misofertas@gmail.com";
+        private const string senderPassword = "contrasennia";
+        private System.Net.NetworkCredential credentials = new System.Net.NetworkCredential(sender, senderPassword);
 
         public Message(string subject, string body, List<string> receivers)
         {
-            this.mail = new MailMessage();
             this.mail.From = new MailAddress(sender);
             this.mail.Subject = subject;
             this.mail.Body = body;
 
-            this.client = new SmtpClient();
             this.client.Host = "smtp.gmail.com";
-            client.UseDefaultCredentials = false;
-            this.client.Credentials = new System.Net.NetworkCredential("contacto.misofertas@gmail.com", "contrasennia");
+            this.client.UseDefaultCredentials = false;
             this.client.Port = 587;     
             this.client.EnableSsl = true;
-            //this.client.DeliveryMethod = SmtpDeliveryMethod.Network;
             this.client.Timeout = 10000;
-            
-            
+            this.client.Credentials = this.credentials;            
             foreach (string receiver in receivers)
             {
                 this.mail.To.Add(new MailAddress(receiver));

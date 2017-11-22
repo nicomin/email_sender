@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using Sender;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using ZeroMQ;
@@ -7,39 +9,47 @@ namespace EmailSender
 {
     class Program
     {
-        private static void runServer(string[] args)
-        {
-            if (args == null || args.Length < 1)
+        /// <summary>
+        /// Gets message data from received json and create a object with it
+        /// </summary>
+        /// <param name="obj">Data obtained from socket</param>
+        /// <returns>Message</returns>
+        private static Message GetEmailDataFromJson(JObject obj)
+        {            
+            string subject = (string)obj["subject"];
+            string body = (string)obj["body"];
+            List<string> receivers = new List<string>();
+            foreach(string receiver in obj["receivers"])
             {
-                Console.WriteLine();
-                Console.WriteLine("Usage: ./{0} HWServer [Name]", AppDomain.CurrentDomain.FriendlyName);
-                Console.WriteLine();
-                Console.WriteLine("    Name   Your name. Default: World");
-                Console.WriteLine();
-                args = new string[] { "World" };
+                receivers.Add(receiver);
             }
+            return new Message(subject, body, receivers);
+        }
 
-            string name = args[0];
+        /// <summary>
+        /// Start a socket listening to port 5555 with ZMQ library
+        /// </summary>
+        /// <param name="args"></param>
+        private static void runServer()
+        {
+            Console.WriteLine("Levantando servidor");
 
             // Create
             using (var context = new ZContext())
             using (var responder = new ZSocket(context, ZSocketType.REP))
             {
-                // Bind
                 responder.Bind("tcp://*:5555");
 
                 while (true)
                 {
-                    // Receive
                     using (ZFrame request = responder.ReceiveFrame())
                     {
-                        Console.WriteLine("Received {0} madafacka", request.ReadString());
-
-                        // Do some work
+                        string json = request.ReadString();
+                        JObject o = JObject.Parse(json);
+                        Message message = GetEmailDataFromJson(o);
+                        message.sendMail();
                         Thread.Sleep(1);
-
-                        // Send
-                        responder.Send(new ZFrame(name));
+                        responder.Send(new ZFrame("OK"));
                     }
                 }
             }        
@@ -47,11 +57,7 @@ namespace EmailSender
 
         static void Main(string[] args)
         {
-            List<string> receivers = new List<string>();
-            receivers.Add("nic.caballero@alumnos.duoc.cl");
-            Sender.Message message = new Sender.Message("Correo de prueba", "Este es un mensaje de prueba", receivers);
-            //message.sendMail();
-            runServer(args);
+            runServer();
         }
     }
 }
